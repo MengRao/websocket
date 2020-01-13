@@ -75,7 +75,7 @@ And similar to `WSServer`, user need to define event handler function `onWSClose
 Most of the server and client configurations are defined as class template parameters as below:
 ```c++
 // EventHandler: user defined type defining the required event handler functions
-// ConnUserData: user defined type that is attached to a WSConnection as member name `user_data`
+// ConnUserData: user defined type attached to a WSConnection as member name `user_data`
 // RecvSegment: switch to use segment handler function `onWSSegment` instead of `onWSMsg`
 // RecvBufSize: msg/segment receive buffer size, too long msgs will cause connection being closed with status code 1009
 // MaxConns: for WSServer only, max number of active connections
