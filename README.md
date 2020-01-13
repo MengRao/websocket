@@ -18,12 +18,12 @@ First user need to define 3 event handler functions: `onWSConnect()`, `onWSClose
   // called when a websocket connection is closed
   // status_code 1005 means no status code in the close msg
   // status_code 1006 means not a clean close(tcp connection closed without a close msg)
-  void onWSClose(WSConn& conn, uint16_t status_code, const char* reason) {
+  void onWSClose(WSConnection& conn, uint16_t status_code, const char* reason) {
     ...
   }
   
   // onWSMsg is used if RecvSegment == false(by default), called when a whole msg is received
-  void onWSMsg(WSConn& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len) {
+  void onWSMsg(WSConnection& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len) {
     ...
   }
 ```
@@ -85,7 +85,7 @@ Note that if `RecvSegment` is set to true, `onWSSegment()` will be called in rep
 ```c++
 // pl_start_idx: index in the whole msg for the 1st byte of payload
 // fin: whether it's the last segment
-void onWSSegment(WSConn& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len, uint32_t pl_start_idx, bool fin);
+void onWSSegment(WSConnection& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len, uint32_t pl_start_idx, bool fin);
 ```
 And if the c++ standard is older than c++17, user need to define both event handlers even if only one will be called(c++17 introduces `if constexpr` which allows only one function to be defined).
 
