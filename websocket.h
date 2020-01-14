@@ -254,6 +254,8 @@ public:
   // get remote network address
   bool getPeername(struct sockaddr_in& addr) { return conn.getPeername(addr); }
 
+  bool isConnected() { return conn.isConnected(); }
+
   // if sending a msg of multiple segments, only set fin to true for the last one
   void send(uint8_t opcode, const uint8_t* payload, uint32_t pl_len, bool fin = true) {
     uint8_t h[14];
@@ -328,7 +330,7 @@ protected:
       data += 2;
     }
     else if (pl_len == 127) {
-      pl_len = be64toh(*(uint64_t*)data);
+      pl_len = be64toh(*(uint64_t*)data) & ~(1ULL << 63);
       data += 8;
     }
     if (mask) {
@@ -414,8 +416,6 @@ public:
 
   const char* getLastError() { return this->conn.getLastError(); }
 
-  bool isConnected() { return this->conn.isConnected(); }
-
   // timeout: connect timeout in milliseconds, 0 means no limit
   // if failed, call getLastError() for the reason
   bool wsConnect(uint64_t timeout, const char* server_ip, uint16_t server_port, const char* request_uri,
@@ -446,7 +446,7 @@ public:
       return false;
     }
     this->conn.write((uint8_t*)req, req_len);
-    while (!this->open && this->conn.isConnected()) {
+    while (!this->open && this->isConnected()) {
       this->conn.read([&](const char* data, uint32_t size) -> uint32_t {
         const char* data_end = data + size;
         const int ValueBufSize = 256;
@@ -507,12 +507,12 @@ public:
       });
       if (getns() > expire) this->conn.close("timeout");
     }
-    return this->conn.isConnected();
+    return this->isConnected();
   }
 
   void poll(EventHandler* handler) {
     this->conn.read([&](const char* data, uint32_t size) { return this->handleWSMsg(handler, (uint8_t*)data, size); });
-    if (!isConnected()) this->handleWSClose(handler);
+    if (!this->isConnected()) this->handleWSClose(handler);
   }
 };
 
@@ -532,24 +532,23 @@ public:
 
   const char* getLastError() { return server_.getLastError(); }
 
-  // conn_timeout: connection max inactive time in milliseconds, 0 means no limit
+  // newconn_timeout: new tcp connection max inactive time in milliseconds, 0 means no limit
+  // openconn_timeout: open ws connection max inactive time in milliseconds, 0 means no limit
   // if failed, call getLastError() for the reason
-  bool init(const char* server_ip, uint16_t server_port, uint64_t conn_timeout = 0) {
-    conn_timeout_ = conn_timeout * 1000000;
+  bool init(const char* server_ip, uint16_t server_port, uint64_t newconn_timeout = 0, uint64_t openconn_timeout = 0) {
+    newconn_timeout_ = newconn_timeout * 1000000;
+    openconn_timeout_ = openconn_timeout * 1000000;
     return server_.init("", server_ip, server_port);
   }
 
   void poll(EventHandler* handler) {
-    uint64_t now = 0;
-    uint64_t expire = std::numeric_limits<uint64_t>::max();
-    if (conn_timeout_ > 0) {
-      now = getns();
-      expire = now + conn_timeout_;
-    }
+    uint64_t now = getns();
+    uint64_t new_expire = newconn_timeout_ ? now + newconn_timeout_ : std::numeric_limits<uint64_t>::max();
+    uint64_t open_expire = openconn_timeout_ ? now + openconn_timeout_ : std::numeric_limits<uint64_t>::max();
     if (conns_cnt_ < MaxConns) {
       Connection& new_conn = *conns_[conns_cnt_];
       if (server_.accept2(new_conn.conn)) {
-        new_conn.init(expire);
+        new_conn.init(new_expire);
         conns_cnt_++;
       }
     }
@@ -558,11 +557,11 @@ public:
       conn.conn.read([&](const char* data, uint32_t size) {
         uint32_t remaining =
           conn.open ? conn.handleWSMsg(handler, (uint8_t*)data, size) : handleHttpRequest(handler, conn, data, size);
-        if (remaining < size) conn.expire_time = expire;
+        if (remaining < size) conn.expire_time = conn.open ? open_expire : new_expire;
         return remaining;
       });
       if (now > conn.expire_time) conn.conn.close("timeout");
-      if (conn.conn.isConnected())
+      if (conn.isConnected())
         i++;
       else {
         if (conn.open) conn.handleWSClose(handler);
@@ -734,7 +733,8 @@ private:
   }
 
 private:
-  uint64_t conn_timeout_;
+  uint64_t newconn_timeout_;
+  uint64_t openconn_timeout_;
   TcpServer server_;
 
   uint32_t conns_cnt_ = 0;
