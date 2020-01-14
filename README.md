@@ -95,5 +95,9 @@ One implementation issue for client: client is not fully conformant to rfc6455 i
 
 One performance consideration for server: as the library is using a simple busy-polling model instead of things like `epoll`, the number of active connections should be limited, as the default value of `MaxConns` implies.
 
+Thread safety: this lib is not thread safe.
+
+TLS support: this lib does not support TLS.
+
 ## Examples
 Example codes implement a [admincmd](https://github.com/MengRao/admincmd) client and server on top of websocket layer, allowing the author to add a web client and reusing all of the existing admin commands provided by the c++ server.
