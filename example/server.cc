@@ -1,8 +1,8 @@
+#include "../websocket.h"
 #include <iostream>
 #include <thread>
 #include <atomic>
 #include <signal.h>
-#include "../websocket.h"
 
 class Server
 {

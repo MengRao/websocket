@@ -27,7 +27,8 @@ SOFTWARE.
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <string.h>
-#include <stdio.h>
+#include <limits>
+#include <memory>
 
 namespace websocket {
 

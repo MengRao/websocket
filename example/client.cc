@@ -1,10 +1,9 @@
+#include "../websocket.h"
 #include <iostream>
 #include <thread>
 #include <atomic>
 #include <mutex>
 #include <signal.h>
-#include <string>
-#include "../websocket.h"
 
 class Client
 {
