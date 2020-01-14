@@ -2,7 +2,7 @@
 A single header c++ websocket client/server lib for linux that implements [rfc6455](https://tools.ietf.org/html/rfc6455).
 
 ## Server class `WSServer`
-First user need to define 3 event handler functions: `onWSConnect()`, `onWSClose()` and `onWSMsg()` for `WSServer` to invoke:
+As this lib uses template callback functions, user need to define 3 event handler functions in his own class: `onWSConnect()`, `onWSClose()` and `onWSMsg()`:
 ```c++
   // called when a new websocket connection is about to open
   // optional: origin, protocol, extensions will be nullptr if not exist in the request headers
@@ -30,9 +30,10 @@ First user need to define 3 event handler functions: `onWSConnect()`, `onWSClose
 
 To get the server running, user calls `init()` once to start the server and `poll()` repetitively to trigger events defined above:
 ```c++
-  // conn_timeout: connection max inactive time in milliseconds, 0 means no limit
+  // newconn_timeout: new tcp connection max inactive time in milliseconds, 0 means no limit
+  // openconn_timeout: open ws connection max inactive time in milliseconds, 0 means no limit
   // if failed, call getLastError() for the reason
-  bool init(const char* server_ip, uint16_t server_port, uint64_t conn_timeout = 0);
+  bool init(const char* server_ip, uint16_t server_port, uint64_t newconn_timeout = 0, uint64_t openconn_timeout = 0);
   
   // non-blocking
   void poll(EventHandler* handler);
