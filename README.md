@@ -2,7 +2,7 @@
 A single header c++ websocket client/server lib for linux that implements [rfc6455](https://tools.ietf.org/html/rfc6455).
 
 ## Server class `WSServer`
-As this lib uses template callback functions, user need to define 3 event handler functions in his own class: `onWSConnect()`, `onWSClose()` and `onWSMsg()`:
+As this lib uses template callback functions, user need to define 3 event handlers in his own class: `onWSConnect()`, `onWSClose()` and `onWSMsg()`:
 ```c++
   // called when a new websocket connection is about to open
   // optional: origin, protocol, extensions will be nullptr if not exist in the request headers
