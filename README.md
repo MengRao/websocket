@@ -53,7 +53,8 @@ User can't create `WSConnection` objects himself, but only get `WSConnection` re
   void send(uint8_t opcode, const uint8_t* payload, uint32_t pl_len, bool fin = true);
   
   // clean close the connection with optional status_code and reason
-  void close(uint16_t status_code = 1005, const char* reason = nullptr, uint32_t reason_size = 0);
+  // status_code 1005 means don't include status_code in close msg
+  void close(uint16_t status_code = 1005, const char* reason = "");
 ```
 It also allows to attach user-defined data structure to a `WSConnection` for user to operate on:
 ```c++
