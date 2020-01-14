@@ -7,11 +7,11 @@
 class Server
 {
 public:
-  struct AdminData
+  struct CMDConnData
   {
     bool login;
   };
-  using WSServer = websocket::WSServer<Server, AdminData>;
+  using WSServer = websocket::WSServer<Server, CMDConnData>;
   using WSConn = WSServer::Connection;
 
   void run() {
@@ -73,6 +73,14 @@ public:
 
   // onWSMsg is used if RecvSegment == false(by default), called when a whole msg is received
   void onWSMsg(WSConn& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len) {
+    if (opcode == websocket::OPCODE_PING) {
+      conn.send(websocket::OPCODE_PONG, payload, pl_len);
+      return;
+    }
+    if (opcode != websocket::OPCODE_TEXT) {
+      conn.close(1003, "not text msg");
+      return;
+    }
     const char* data = (const char*)payload;
     const char* data_end = data + pl_len;
     char buf[4096] = {0};
@@ -116,7 +124,7 @@ public:
     }
     if (argc) {
       *out = 0;
-      std::string resp = onAdminCMD(conn.user_data, argc, argv);
+      std::string resp = onCMD(conn.user_data, argc, argv);
       if (resp.size()) conn.send(websocket::OPCODE_TEXT, (const uint8_t*)resp.data(), resp.size());
     }
   }
@@ -126,16 +134,11 @@ public:
   // fin: whether it's the last segment
   void onWSSegment(WSConn& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len, uint32_t pl_start_idx,
                    bool fin) {
-    if (pl_start_idx == 0 && fin) { // whether it's the only segment in the msg
-      onWSMsg(conn, opcode, payload, pl_len);
-    }
-    else {
-      std::cout << "can't handle ws segment, pl_start_idx: " << pl_start_idx << ", fin: " << fin << std::endl;
-    }
+    std::cout << "error: onWSSegment should not be called" << std::endl;
   }
 
 private:
-  std::string onAdminCMD(AdminData& user_data, int argc, const char** argv) {
+  std::string onCMD(CMDConnData& conn, int argc, const char** argv) {
     std::string resp;
     if (!strcmp(argv[0], "help")) {
       resp = admincmd_help;
@@ -145,11 +148,11 @@ private:
         resp = "wrong password";
       }
       else {
-        user_data.login = true;
+        conn.login = true;
         resp = "login success";
       }
     }
-    else if (!user_data.login) {
+    else if (!conn.login) {
       resp = "must login first";
     }
     else if (!strcmp(argv[0], "echo")) {

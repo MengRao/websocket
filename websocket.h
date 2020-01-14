@@ -291,13 +291,11 @@ public:
   }
 
   // clean close the connection with optional status_code and reason
-  void close(uint16_t status_code = 1005, const char* reason = nullptr, uint32_t reason_size = 0) {
+  void close(uint16_t status_code = 1005, const char* reason = "") {
     *(uint16_t*)close_reason = htobe16(status_code);
-    if (reason_size > sizeof(close_reason) - 3) reason_size = sizeof(close_reason) - 3;
-    memcpy(close_reason + 2, reason, reason_size);
-    close_reason[2 + reason_size] = 0;
+    uint32_t reason_len = snprintf((char*)close_reason + 2, sizeof(close_reason) - 2, "%s", reason);
     if (status_code != 1005) {
-      send(OPCODE_CLOSE, close_reason, 2 + reason_size);
+      send(OPCODE_CLOSE, close_reason, 2 + reason_len);
     }
     else
       send(OPCODE_CLOSE, nullptr, 0);
@@ -348,12 +346,14 @@ protected:
     if (RecvSegment || (beg && fin)) {
       if (opcode == OPCODE_CLOSE) {
         uint16_t status_code = 1005;
-        uint32_t reason_size = 0;
+        char reason[128] = {0};
         if (pl_len >= 2) {
           status_code = be16toh(*(uint16_t*)data);
-          reason_size = pl_len - 2;
+          uint64_t reason_len = std::min(sizeof(reason) - 1, pl_len - 2);
+          memcpy(reason, data + 2, reason_len);
+          reason[reason_len] = 0;
         }
-        close(status_code, (const char*)data + 2, reason_size);
+        close(status_code, reason);
       }
       else {
 #if __cplusplus >= 201703L
@@ -406,7 +406,7 @@ protected:
   uint64_t expire_time;
   uint8_t frame[RecvSegment ? 0 : RecvBufSize];
   typename SocketTcpServer<RecvBufSize>::TcpConnection conn;
-  uint8_t close_reason[256]; // first 2 bytes are status_code(big endian)
+  uint8_t close_reason[128]; // first 2 bytes are status_code(big endian)
 };
 
 template<typename EventHandler, typename ConnUserData = char, bool RecvSegment = false, uint32_t RecvBufSize = 4096>
@@ -450,7 +450,6 @@ public:
     while (!this->open && this->isConnected()) {
       this->conn.read([&](const char* data, uint32_t size) -> uint32_t {
         const char* data_end = data + size;
-        const int ValueBufSize = 256;
         bool status_code_checked = false, upgrade_checked = false, connection_checked = false, accept_checked = false;
         while (true) {
           const char* ln = (char*)memchr(data, '\n', data_end - data);
@@ -630,7 +629,7 @@ private:
 
   uint32_t handleHttpRequest(EventHandler* handler, Connection& conn, const char* data, uint32_t size) {
     const char* data_end = data + size;
-    const int ValueBufSize = 256;
+    const int ValueBufSize = 128;
     char request_uri[1024] = {0};
     char host[ValueBufSize] = {0};
     char origin[ValueBufSize] = {0};

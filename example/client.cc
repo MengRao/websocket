@@ -29,7 +29,7 @@ public:
 
     std::cout << "Client running..." << std::endl;
     std::string line;
-    while (running.load(std::memory_order_relaxed) && std::getline(std::cin, line)) {
+    while (running.load(std::memory_order_relaxed) && wsclient.isConnected() && std::getline(std::cin, line)) {
       std::lock_guard<std::mutex> lck(mtx);
       wsclient.send(websocket::OPCODE_TEXT, (const uint8_t*)line.data(), line.size());
     }
@@ -46,6 +46,14 @@ public:
   }
 
   void onWSMsg(WSConn& conn, uint8_t opcode, const uint8_t* payload, uint32_t pl_len) {
+    if (opcode == websocket::OPCODE_PING) {
+      conn.send(websocket::OPCODE_PONG, payload, pl_len);
+      return;
+    }
+    if (opcode != websocket::OPCODE_TEXT) {
+      std::cout << "got none text msg, opcode: " << (int)opcode << std::endl;
+      return;
+    }
     std::cout.write((const char*)payload, pl_len);
     std::cout << std::endl;
   }
