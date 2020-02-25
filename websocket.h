@@ -409,11 +409,13 @@ protected:
   uint8_t close_reason[128]; // first 2 bytes are status_code(big endian)
 };
 
-template<typename EventHandler, typename ConnUserData = char, bool RecvSegment = false, uint32_t RecvBufSize = 4096>
-class WSClient : public WSConnection<EventHandler, ConnUserData, RecvSegment, RecvBufSize, true>
+template<typename EventHandler, typename ConnUserData = char, bool RecvSegment = false, uint32_t RecvBufSize = 4096,
+         typename ConnectionType = WSConnection<EventHandler, ConnUserData, RecvSegment, RecvBufSize, true>>
+class WSClient : public ConnectionType
 {
 public:
-  using Connection = WSConnection<EventHandler, ConnUserData, RecvSegment, RecvBufSize, true>;
+  using Connection = ConnectionType;
+  // using Connection = WSConnection<EventHandler, ConnUserData, RecvSegment, RecvBufSize, true>;
 
   const char* getLastError() { return this->conn.getLastError(); }
 
