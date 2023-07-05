@@ -29,6 +29,8 @@ SOFTWARE.
 #include <string.h>
 #include <limits>
 #include <memory>
+#include <stdio.h>
+#include <errno.h>
 
 namespace websocket {
 
@@ -484,8 +486,7 @@ public:
               upgrade_checked = true;
             }
             else if (key_len == 10 && !memcmp(data, "Connection", 10)) {
-              if (memcmp(val, "Upgrade", 7)) break;
-              connection_checked = true;
+              if (!memcmp(val, "Upgrade", 7)) connection_checked = true;
             }
             else if (key_len == 20 && !memcmp(data, "Sec-WebSocket-Accept", 20)) {
               if (val_len != 28 || memcmp(val, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=", 28)) break;
@@ -692,38 +693,38 @@ private:
         while (*val == ' ') val++;
         uint32_t key_len = colon - data;
         uint32_t val_len = val_end - val;
-        if (val_len >= ValueBufSize) break;
-        if (key_len == 4 && !memcmp(data, "Host", 4)) {
-          memcpy(host, val, val_len);
-          host[val_len] = 0;
-        }
-        else if (key_len == 6 && !memcmp(data, "Origin", 6)) {
-          memcpy(origin, val, val_len);
-          origin[val_len] = 0;
-        }
-        else if (key_len == 7 && !memcmp(data, "Upgrade", 7)) {
-          if (memcmp(val, "websocket", 9)) break;
-          upgrade_checked = true;
-        }
-        else if (key_len == 10 && !memcmp(data, "Connection", 10)) {
-          if (memcmp(val, "Upgrade", 7)) break;
-          connection_checked = true;
-        }
-        else if (key_len == 17 && !memcmp(data, "Sec-WebSocket-Key", 17)) {
-          if (val_len != 24) break;
-          memcpy(wskey, val, val_len);
-        }
-        else if (key_len == 21 && !memcmp(data, "Sec-WebSocket-Version", 21)) {
-          if (val_len != 2 || memcmp(val, "13", 2)) break;
-          wsversion_checked = true;
-        }
-        else if (key_len == 22 && !memcmp(data, "Sec-WebSocket-Protocol", 22)) {
-          memcpy(wsprotocol, val, val_len);
-          wsprotocol[val_len] = 0;
-        }
-        else if (key_len == 24 && !memcmp(data, "Sec-WebSocket-Extensions", 24)) {
-          memcpy(wsextensions, val, val_len);
-          wsextensions[val_len] = 0;
+        if (val_len < ValueBufSize) {
+          if (key_len == 4 && !memcmp(data, "Host", 4)) {
+            memcpy(host, val, val_len);
+            host[val_len] = 0;
+          }
+          else if (key_len == 6 && !memcmp(data, "Origin", 6)) {
+            memcpy(origin, val, val_len);
+            origin[val_len] = 0;
+          }
+          else if (key_len == 7 && !memcmp(data, "Upgrade", 7)) {
+            if (memcmp(val, "websocket", 9)) break;
+            upgrade_checked = true;
+          }
+          else if (key_len == 10 && !memcmp(data, "Connection", 10)) {
+            if (!memcmp(val, "Upgrade", 7)) connection_checked = true;
+          }
+          else if (key_len == 17 && !memcmp(data, "Sec-WebSocket-Key", 17)) {
+            if (val_len != 24) break;
+            memcpy(wskey, val, val_len);
+          }
+          else if (key_len == 21 && !memcmp(data, "Sec-WebSocket-Version", 21)) {
+            if (val_len != 2 || memcmp(val, "13", 2)) break;
+            wsversion_checked = true;
+          }
+          else if (key_len == 22 && !memcmp(data, "Sec-WebSocket-Protocol", 22)) {
+            memcpy(wsprotocol, val, val_len);
+            wsprotocol[val_len] = 0;
+          }
+          else if (key_len == 24 && !memcmp(data, "Sec-WebSocket-Extensions", 24)) {
+            memcpy(wsextensions, val, val_len);
+            wsextensions[val_len] = 0;
+          }
         }
       }
       data = ln + 2; // skip \r\n
